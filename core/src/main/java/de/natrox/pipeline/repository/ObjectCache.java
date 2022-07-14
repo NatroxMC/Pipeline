@@ -21,10 +21,11 @@ import de.natrox.eventbus.EventListener;
 import de.natrox.pipeline.document.DocumentData;
 import de.natrox.pipeline.object.InstanceCreator;
 import de.natrox.pipeline.object.ObjectData;
-import de.natrox.pipeline.object.mapping.ObjectMapper;
 import de.natrox.pipeline.object.type.TypeInstanceCreator;
 import de.natrox.pipeline.part.updater.Updater;
 import de.natrox.pipeline.part.updater.event.DocumentUpdateEvent;
+import de.natrox.serialize.exception.SerializeException;
+import de.natrox.serialize.objectmapping.ObjectMapper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,7 +40,6 @@ final class ObjectCache<T extends ObjectData> {
     private final Updater updater;
 
     private final ObjectMapper<T> objectMapper;
-    private final ObjectRepositoryImpl<T> repository;
     private final Class<T> type;
     private final String mapName;
     private final InstanceCreator<T> instanceCreator;
@@ -49,7 +49,6 @@ final class ObjectCache<T extends ObjectData> {
         this.pipeline = pipeline;
         this.updater = pipeline.updater();
         this.objectMapper = objectMapper;
-        this.repository = repository;
         this.type = repository.type();
         this.mapName = repository.mapName();
         this.cache = new ConcurrentHashMap<>();
@@ -76,10 +75,13 @@ final class ObjectCache<T extends ObjectData> {
     }
 
     private void updateData(T data, DocumentData update) {
-        DocumentData before = this.objectMapper.save(data);
-        this.objectMapper.load(data, update);
-
-        data.handleUpdate(before);
+        try {
+            DocumentData before = DocumentData.create(this.objectMapper.save(data));
+            this.objectMapper.load(data, update.asMap());
+            data.handleUpdate(before);
+        } catch (SerializeException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @NotNull Optional<T> get(@NotNull UUID uniqueId) {
@@ -104,9 +106,13 @@ final class ObjectCache<T extends ObjectData> {
 
         DocumentData documentData = DocumentData.create();
         documentData.append("uniqueId", uniqueId);
-        this.objectMapper.load(instance, documentData);
 
-        return instance;
+        try {
+            this.objectMapper.load(instance, documentData.asMap());
+            return instance;
+        } catch (SerializeException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

@@ -51,8 +51,8 @@ public final class DocumentOnlineTimeManager implements OnlineTimeManager {
 
     public void handleQuit(@NotNull UUID uuid) {
         this.repository.get(uuid).ifPresent(documentData -> {
-            long onlineTime = documentData.get("onlineTime", Long.class);
-            long lastJoin = documentData.get("lastJoin", Long.class);
+            long onlineTime = documentData.get("onlineTime", long.class);
+            long lastJoin = documentData.get("lastJoin", long.class);
 
             onlineTime += System.currentTimeMillis() - lastJoin;
             documentData.append("onlineTime", onlineTime);

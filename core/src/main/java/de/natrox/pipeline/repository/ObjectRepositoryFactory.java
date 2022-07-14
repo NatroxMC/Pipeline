@@ -18,6 +18,8 @@ package de.natrox.pipeline.repository;
 
 import de.natrox.pipeline.object.ObjectData;
 import de.natrox.pipeline.object.annotation.AnnotationResolver;
+import de.natrox.serialize.exception.SerializeException;
+import de.natrox.serialize.objectmapping.ObjectMapper;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.HashMap;
@@ -71,11 +73,16 @@ final class ObjectRepositoryFactory {
             documentRepository.close();
         }
 
-        DocumentRepositoryImpl documentRepository = this.documentRepositoryFactory.createRepository(name, options);
-        ObjectRepository<T> repository = new ObjectRepositoryImpl<>(this.pipeline, type, documentRepository, options);
-        this.repositoryMap.put(name, repository);
+        try {
+            ObjectMapper<T> objectMapper = ObjectMapper.factory().get(type);
+            DocumentRepositoryImpl documentRepository = this.documentRepositoryFactory.createRepository(name, options);
+            ObjectRepository<T> repository = new ObjectRepositoryImpl<>(this.pipeline, type, objectMapper, documentRepository, options);
+            this.repositoryMap.put(name, repository);
 
-        return repository;
+            return repository;
+        } catch (SerializeException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void clear() {

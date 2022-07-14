@@ -16,6 +16,7 @@
 
 package de.natrox.pipeline.demo;
 
+import de.natrox.common.util.UuidUtil;
 import de.natrox.pipeline.caffeine.CaffeineProvider;
 import de.natrox.pipeline.demo.onlinetime.ObjectOnlineTimeManager;
 import de.natrox.pipeline.demo.onlinetime.OnlineTimeManager;
@@ -51,7 +52,7 @@ public final class GlobalDemoMain {
             .build();
 
         OnlineTimeManager onlineTimeManager = new ObjectOnlineTimeManager(pipeline);
-        UUID uuid = UUID.fromString("DemoPlayer");
+        UUID uuid = UuidUtil.fromName("DemoPlayer");
 
         onlineTimeManager.handleJoin(uuid);
         Thread.sleep(10000);
