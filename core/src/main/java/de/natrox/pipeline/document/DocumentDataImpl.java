@@ -21,6 +21,10 @@ import de.natrox.common.validate.Check;
 import de.natrox.pipeline.util.Iterables;
 import de.natrox.pipeline.util.ObjectUtil;
 import de.natrox.pipeline.util.Strings;
+import de.natrox.serialize.Deserializer;
+import de.natrox.serialize.SerializerCollection;
+import de.natrox.serialize.exception.CoercionFailedException;
+import de.natrox.serialize.exception.SerializeException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -68,7 +72,23 @@ public final class DocumentDataImpl extends HashMap<String, Object> implements D
     @Override
     public <T> @Nullable T get(@NotNull String field, @NotNull Class<T> type) {
         Check.notNull(type, "type");
-        return type.cast(this.get(field));
+        Deserializer<T> serial = SerializerCollection.defaults().get(type);
+        if(serial == null) {
+            //TODO: message/reason
+            throw new RuntimeException();
+        }
+
+        Object value = this.get(field);
+
+        if(value == null) {
+            return null;
+        }
+
+        try {
+            return serial.deserialize(value, type);
+        } catch (SerializeException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -115,6 +135,11 @@ public final class DocumentDataImpl extends HashMap<String, Object> implements D
     public boolean containsKey(@NotNull String key) {
         Check.notNull(key, "key");
         return super.containsKey(key);
+    }
+
+    @Override
+    public @NotNull Map<String, Object> asMap() {
+        return this;
     }
 
     @Override

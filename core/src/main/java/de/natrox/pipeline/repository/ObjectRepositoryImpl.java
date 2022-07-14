@@ -21,10 +21,11 @@ import de.natrox.pipeline.document.DocumentData;
 import de.natrox.pipeline.find.FindOptions;
 import de.natrox.pipeline.object.InstanceCreator;
 import de.natrox.pipeline.object.ObjectData;
-import de.natrox.pipeline.object.mapping.ObjectMapper;
 import de.natrox.pipeline.part.config.StorageConfig;
 import de.natrox.pipeline.stream.Cursor;
 import de.natrox.pipeline.stream.DocumentStream;
+import de.natrox.serialize.exception.SerializeException;
+import de.natrox.serialize.objectmapping.ObjectMapper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,11 +40,11 @@ final class ObjectRepositoryImpl<T extends ObjectData> implements ObjectReposito
     private final ObjectMapper<T> objectMapper;
     private final ObjectCache<T> objectCache;
 
-    ObjectRepositoryImpl(AbstractPipeline pipeline, Class<T> type, DocumentRepositoryImpl documentRepository, RepositoryOptions.ObjectOptions<T> options) {
+    ObjectRepositoryImpl(AbstractPipeline pipeline, Class<T> type, ObjectMapper<T> objectMapper, DocumentRepositoryImpl documentRepository, RepositoryOptions.ObjectOptions<T> options) {
         this.type = type;
         this.documentRepository = documentRepository;
         this.mapName = documentRepository.name();
-        this.objectMapper = ObjectMapper.create(type);
+        this.objectMapper = objectMapper;
         this.objectCache = new ObjectCache<>(pipeline, this, this.objectMapper, options);
     }
 
@@ -53,8 +54,12 @@ final class ObjectRepositoryImpl<T extends ObjectData> implements ObjectReposito
         // Instantiate T as fast as possible so that the Updater can still apply updates while loading a record
         T data = this.objectCache.getOrCreate(uniqueId, instanceCreator);
         return this.documentRepository.get(uniqueId).map(document -> {
-            this.objectMapper.load(data, document);
-            return data;
+            try {
+                this.objectMapper.load(data, document.asMap());
+                return data;
+            } catch (SerializeException e) {
+                throw new RuntimeException(e);
+            }
         });
     }
 
@@ -66,11 +71,15 @@ final class ObjectRepositoryImpl<T extends ObjectData> implements ObjectReposito
 
     private T create(UUID uniqueId, @Nullable InstanceCreator<T> instanceCreator) {
         Check.notNull(uniqueId, "uniqueId");
-        T data = this.objectCache.getOrCreate(uniqueId, instanceCreator);
-        data.handleCreate();
-        DocumentData documentData = this.objectMapper.save(data);
-        this.documentRepository.insert(uniqueId, documentData);
-        return data;
+        try {
+            T data = this.objectCache.getOrCreate(uniqueId, instanceCreator);
+            data.handleCreate();
+            DocumentData documentData = DocumentData.create(this.objectMapper.save(data));
+            this.documentRepository.insert(uniqueId, documentData);
+            return data;
+        } catch (SerializeException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -83,7 +92,11 @@ final class ObjectRepositoryImpl<T extends ObjectData> implements ObjectReposito
     @Override
     public void save(@NotNull T objectData, QueryStrategy @NotNull ... strategies) {
         Check.notNull(objectData, "objectData");
-        this.documentRepository.insert(objectData.uniqueId(), this.objectMapper.save(objectData), strategies);
+        try {
+            this.documentRepository.insert(objectData.uniqueId(), DocumentData.create(this.objectMapper.save(objectData)), strategies);
+        } catch (SerializeException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -146,9 +159,13 @@ final class ObjectRepositoryImpl<T extends ObjectData> implements ObjectReposito
     }
 
     T instantiate(UUID uniqueId, DocumentData document, @Nullable InstanceCreator<T> instanceCreator) {
-        T data = this.objectCache.getOrCreate(uniqueId, instanceCreator);
-        this.objectMapper.load(data, document);
-        return data;
+        try {
+            T data = this.objectCache.getOrCreate(uniqueId, instanceCreator);
+            this.objectMapper.load(data, document.asMap());
+            return data;
+        } catch (SerializeException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     final static class BuilderImpl<T extends ObjectData> extends AbstractRepositoryBuilder<ObjectRepository<T>, ObjectRepository.Builder<T>> implements ObjectRepository.Builder<T> {

@@ -71,4 +71,6 @@ public sealed interface DocumentData extends Iterable<Pair<String, Object>> perm
 
     boolean containsKey(@NotNull String key);
 
+    @NotNull Map<String, Object> asMap();
+
 }

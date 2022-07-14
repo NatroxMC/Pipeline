@@ -60,8 +60,8 @@ public final class ObjectOnlineTimeManager implements OnlineTimeManager {
     @Properties(identifier = "OnlineTimeData")
     final static class OnlineTimeData extends ObjectData {
 
-        private Long onlineTime;
-        private Long lastJoin;
+        private long onlineTime;
+        private long lastJoin;
 
         public OnlineTimeData(Pipeline pipeline) {
             super(pipeline);

@@ -17,6 +17,7 @@
 dependencies {
     implementation(files("D:\\workspace\\NatroxMC\\Common\\build\\libs\\common.jar"))
     implementation(files("D:\\workspace\\NatroxMC\\Eventbus\\build\\libs\\eventbus.jar"))
+    implementation(files("D:\\workspace\\NatroxMC\\Serialize\\build\\libs\\serialize.jar"))
 
     implementation("org.jetbrains:annotations:23.0.0")
     implementation("org.jodd:jodd-core:5.3.0")
